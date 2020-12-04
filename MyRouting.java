@@ -1,10 +1,13 @@
 /*******************
+
 Team members and IDs:
 Jonathan Muniz ID1 5047584
-Name2 ID2
+Jeffrey Cuello 5675668
 Name3 ID3
+
 Github link:
-https://github.com/xxx/yyy
+https://github.com/Jo-Mu/MyRouting
+
 *******************/
 
 package net.floodlightcontroller.myrouting;
@@ -17,6 +20,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.Queue;
 
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
@@ -40,6 +44,7 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
 
 import java.util.ArrayList;
 import java.util.Set;
+import java.util.Stack;
 
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.LinkInfo;
@@ -131,12 +136,12 @@ public class MyRouting implements IOFMessageListener, IFloodlightModule {
 	public net.floodlightcontroller.core.IListener.Command receive(
 			IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
 
-
 		// Print the topology if not yet.
 		if (!printedTopo) 
 		{
 			System.out.println("*** Print topology");
-			links = lds.getLinks();
+			links = new HashMap<>(lds.getLinks());
+
 			Map<Long, Set<Link>> switchList = lds.getSwitchLinks();
 			
 			for(Map.Entry<Long, Set<Link>> entry : switchList.entrySet()) 
@@ -188,7 +193,7 @@ public class MyRouting implements IOFMessageListener, IFloodlightModule {
 		}
 		else{
 			System.out.println("*** New flow packet");
-
+			
 		// Parse the incoming packet.
 			OFPacketIn pi = (OFPacketIn)msg;
 			OFMatch match = new OFMatch();
@@ -198,12 +203,61 @@ public class MyRouting implements IOFMessageListener, IFloodlightModule {
 			// ...
 			System.out.println("srcIP: " + match.getNetworkSourceCIDR());
 	        System.out.println("dstIP: " + match.getNetworkDestinationCIDR());
-
-			// Calculate the path using Dijkstra's algorithm.
-			Route route = null;
-			
-			// ...
-			System.out.println("route: " + "1 2 3 ...");			
+	        
+	        Route route = null;
+	        Map<Long, Set<Link>> switch_ids = lds.getSwitchLinks();
+	        
+	        if (!switch_ids.isEmpty()) {
+	        	Set<Long> visited = new HashSet<>();
+		        Map<Long, Integer> distance = new HashMap<>();
+		        Map<Long, Long> parents = new HashMap<>();        
+		        List<Long> next = new ArrayList<>();
+		        
+		        for (Map.Entry<Long, Set<Link>> entry : switch_ids.entrySet()) {
+		        	distance.put(entry.getKey(), Integer.MAX_VALUE);
+		        	parents.put(entry.getKey(), entry.getKey());
+		        }
+		        
+		        Long src_id = eth.getSourceMAC().toLong();
+		        Long dst_id = eth.getDestinationMAC().toLong();
+		        
+		        distance.put(src_id, 0);
+		        next.add(src_id);
+		        
+		        while (!next.isEmpty()) {
+		        	if (!visited.contains(next.get(0))) {
+		        		Long node_id = next.get(0);
+		        		Set<Link> neighbors = switch_ids.get(node_id);
+		        		
+		        		for (Link neighbor : neighbors) {
+		        			if (neighbor.getSrc() == node_id) {
+		        				if (!visited.contains(neighbor.getDst())) {
+		        					next.add(neighbor.getDst());
+		        					int cost = 10 + distance.get(node_id);
+		        					
+		        					if (node_id % 2 == 0 && neighbor.getDst() % 2 == 0) {
+		        						cost = 100 + distance.get(node_id);
+		        					}
+		        					else if (node_id % 2 != 0 && neighbor.getDst() % 2 != 0) {
+		        						cost = 1 + distance.get(node_id);
+		        					}
+		        					
+		        					int current_cost = distance.get(neighbor.getDst());
+		        					if (cost < current_cost) {
+		        						parents.put(neighbor.getDst(), node_id);
+		        						distance.put(neighbor.getDst(), cost);
+		        					}
+		        				}
+		        			}
+		        		}
+		        		
+		        		visited.add(node_id);
+		        		next.remove(0);
+		        	}
+		        	else {
+		        		next.remove(0);
+		        	}
+		        }
 
 			// Write the path into the flow tables of the switches on the path.
 			if (route != null) {
