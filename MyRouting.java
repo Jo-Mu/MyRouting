@@ -1,6 +1,6 @@
 /*******************
 Team members and IDs:
-Name1 ID1
+Jonathan Muniz ID1 5047584
 Name2 ID2
 Name3 ID3
 Github link:
@@ -11,6 +11,7 @@ package net.floodlightcontroller.myrouting;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -132,10 +133,46 @@ public class MyRouting implements IOFMessageListener, IFloodlightModule {
 
 
 		// Print the topology if not yet.
-		if (!printedTopo) {
+		if (!printedTopo) 
+		{
 			System.out.println("*** Print topology");
-
-			// For each switch, print its neighbor switches.
+			links = lds.getLinks();
+			Map<Long, Set<Link>> switchList = lds.getSwitchLinks();
+			
+			for(Map.Entry<Long, Set<Link>> entry : switchList.entrySet()) 
+			{
+				System.out.print("switch " + entry.getKey() + " neighbors: ");
+				HashSet<Long> linkIds = new HashSet<Long>();
+				
+				for(Link link : entry.getValue()) 
+				{
+					if(entry.getKey() == link.getDst()) 
+					{
+						linkIds.add(link.getSrc());
+					}
+					else
+					{
+						linkIds.add(link.getDst());
+					}
+				}
+				
+				boolean firstLink = true;
+				
+				for(Long id : linkIds) 
+				{
+					if(firstLink) 
+					{
+						System.out.print(id);
+						firstLink = false;
+					}
+					else 
+					{
+						System.out.print(", " + id);
+					}
+				}
+				
+				System.out.println();
+			}
 
 			printedTopo = true;
 		}
@@ -152,19 +189,19 @@ public class MyRouting implements IOFMessageListener, IFloodlightModule {
 		else{
 			System.out.println("*** New flow packet");
 
-			// Parse the incoming packet.
+		// Parse the incoming packet.
 			OFPacketIn pi = (OFPacketIn)msg;
 			OFMatch match = new OFMatch();
-		    match.loadFromPacket(pi.getPacketData(), pi.getInPort());	
+		    match.loadFromPacket(pi.getPacketData(), pi.getInPort());
 			
 			// Obtain source and destination IPs.
 			// ...
-			System.out.println("srcIP: " + "a.b.c.d");
-	        System.out.println("dstIP: " + "a.b.c.d");
-
+			System.out.println("srcIP: " + match.getNetworkSourceCIDR());
+	        System.out.println("dstIP: " + match.getNetworkDestinationCIDR());
 
 			// Calculate the path using Dijkstra's algorithm.
 			Route route = null;
+			
 			// ...
 			System.out.println("route: " + "1 2 3 ...");			
 
