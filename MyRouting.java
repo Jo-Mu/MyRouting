@@ -1,6 +1,6 @@
 /*******************
 Team members and IDs:
-Jonathan Muniz ID1 5047584
+Jonathan Muniz 5047584
 Jeffrey Cuello 5675668
 Name3 ID3
 Github link:
