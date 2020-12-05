@@ -1,13 +1,10 @@
 /*******************
-
 Team members and IDs:
 Jonathan Muniz ID1 5047584
 Jeffrey Cuello 5675668
 Name3 ID3
-
 Github link:
 https://github.com/Jo-Mu/MyRouting
-
 *******************/
 
 package net.floodlightcontroller.myrouting;
@@ -140,7 +137,6 @@ public class MyRouting implements IOFMessageListener, IFloodlightModule {
 		if (!printedTopo) 
 		{
 			System.out.println("*** Print topology");
-			links = new HashMap<>(lds.getLinks());
 
 			Map<Long, Set<Link>> switchList = lds.getSwitchLinks();
 			
@@ -191,10 +187,11 @@ public class MyRouting implements IOFMessageListener, IFloodlightModule {
 		if (eth.getEtherType() != 0x0800) {
 			return Command.CONTINUE;
 		}
-		else{
+		else
+		{
 			System.out.println("*** New flow packet");
 			
-		// Parse the incoming packet.
+			// Parse the incoming packet.
 			OFPacketIn pi = (OFPacketIn)msg;
 			OFMatch match = new OFMatch();
 		    match.loadFromPacket(pi.getPacketData(), pi.getInPort());
@@ -205,15 +202,18 @@ public class MyRouting implements IOFMessageListener, IFloodlightModule {
 	        System.out.println("dstIP: " + match.getNetworkDestinationCIDR());
 	        
 	        Route route = null;
+	        Route revRoute = null;
 	        Map<Long, Set<Link>> switch_ids = lds.getSwitchLinks();
 	        
-	        if (!switch_ids.isEmpty()) {
+	        if (!switch_ids.isEmpty()) 
+	        {
 	        	Set<Long> visited = new HashSet<>();
 		        Map<Long, Integer> distance = new HashMap<>();
 		        Map<Long, Long> parents = new HashMap<>();        
 		        List<Long> next = new ArrayList<>();
 		        
-		        for (Map.Entry<Long, Set<Link>> entry : switch_ids.entrySet()) {
+		        for (Map.Entry<Long, Set<Link>> entry : switch_ids.entrySet()) 
+		        {
 		        	distance.put(entry.getKey(), Integer.MAX_VALUE);
 		        	parents.put(entry.getKey(), entry.getKey());
 		        }
@@ -224,26 +224,34 @@ public class MyRouting implements IOFMessageListener, IFloodlightModule {
 		        distance.put(src_id, 0);
 		        next.add(src_id);
 		        
-		        while (!next.isEmpty()) {
-		        	if (!visited.contains(next.get(0))) {
+		        while (!next.isEmpty()) 
+		        {
+		        	if (!visited.contains(next.get(0))) 
+		        	{
 		        		Long node_id = next.get(0);
 		        		Set<Link> neighbors = switch_ids.get(node_id);
 		        		
-		        		for (Link neighbor : neighbors) {
-		        			if (neighbor.getSrc() == node_id) {
-		        				if (!visited.contains(neighbor.getDst())) {
+		        		for (Link neighbor : neighbors) 
+		        		{
+		        			if (neighbor.getSrc() == node_id) 
+		        			{
+		        				if (!visited.contains(neighbor.getDst())) 
+		        				{
 		        					next.add(neighbor.getDst());
 		        					int cost = 10 + distance.get(node_id);
 		        					
-		        					if (node_id % 2 == 0 && neighbor.getDst() % 2 == 0) {
+		        					if (node_id % 2 == 0 && neighbor.getDst() % 2 == 0) 
+		        					{
 		        						cost = 100 + distance.get(node_id);
 		        					}
-		        					else if (node_id % 2 != 0 && neighbor.getDst() % 2 != 0) {
+		        					else if (node_id % 2 != 0 && neighbor.getDst() % 2 != 0) 
+		        					{
 		        						cost = 1 + distance.get(node_id);
 		        					}
 		        					
 		        					int current_cost = distance.get(neighbor.getDst());
-		        					if (cost < current_cost) {
+		        					if (cost < current_cost) 
+		        					{
 		        						parents.put(neighbor.getDst(), node_id);
 		        						distance.put(neighbor.getDst(), cost);
 		        					}
@@ -254,17 +262,64 @@ public class MyRouting implements IOFMessageListener, IFloodlightModule {
 		        		visited.add(node_id);
 		        		next.remove(0);
 		        	}
-		        	else {
+		        	else 
+		        	{
 		        		next.remove(0);
 		        	}
 		        }
-
-			// Write the path into the flow tables of the switches on the path.
-			if (route != null) {
-				installRoute(route.getPath(), match);
-			}
-			
-			return Command.STOP;
+		        
+		        ArrayList<Long> revRouteList = new ArrayList<Long>();
+		        boolean makingRoute = true;
+		        Long nextNode = dst_id;
+		        
+		        while(makingRoute) 
+		        {
+		        	revRouteList.add(nextNode);
+		        	
+		        	if(parents.get(nextNode) == nextNode) 
+		        	{
+		        		makingRoute = false;
+		        	}
+		        	else 
+		        	{
+		        		nextNode = parents.get(nextNode);
+		        	}
+		        }
+		        
+		        Map<NodePortTuple, Set<Link>> nodePortLinks = lds.getPortLinks();
+		        ArrayList<NodePortTuple> nodeRoute = new ArrayList<NodePortTuple>();
+		        LinkedList<NodePortTuple> revNodeLinked = new LinkedList<NodePortTuple>();
+		        System.out.print("route:");
+		        
+		        for(int i = revRouteList.size() - 1; i >= 0; i--) 
+		        {
+		        	System.out.print(" " + revRouteList.get(i));
+		        	
+		        	/*for(Map.Entry<NodePortTuple, Set<Link>> entry : nodePortLinks.entrySet()) 
+		        	{
+		        		if(entry.getKey().getNodeId() == revRouteList.get(i)) 
+		        		{
+		        			nodeRoute.add(entry.getKey());
+		        			revNodeLinked.offerFirst(entry.getKey());
+		        		}
+		        	}*/
+		        	
+		        }
+		        
+		        System.out.println();
+		        //ArrayList<NodePortTuple> revNodeRoute = new ArrayList<NodePortTuple>(revNodeLinked);
+		        //route = new Route(new RouteId(src_id, dst_id), nodeRoute);
+		        //revRoute = new Route(new RouteId(dst_id, src_id), revNodeRoute);
+	        }
+	        
+	        // Write the path into the flow tables of the switches on the path.
+	        if (route != null && revRoute != null) 
+	        {
+	        	installRoute(route.getPath(), match);
+	        	installRoute(revRoute.getPath(), match);
+	        }
+	     			
+	     	return Command.STOP;
 		}
 	}
 
