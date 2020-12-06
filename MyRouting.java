@@ -1,8 +1,8 @@
 /*******************
 Team members and IDs:
-Jonathan Muniz 5047584
+Jonathan Muniz ID1 5047584
 Jeffrey Cuello 5675668
-Bill Liza ID: 5847813
+Name3 ID3
 Github link:
 https://github.com/Jo-Mu/MyRouting
 *******************/
@@ -286,40 +286,47 @@ public class MyRouting implements IOFMessageListener, IFloodlightModule {
 		        	}
 		        }
 		        
-		        Map<NodePortTuple, Set<Link>> nodePortLinks = lds.getPortLinks();
 		        ArrayList<NodePortTuple> nodeRoute = new ArrayList<NodePortTuple>();
-		        LinkedList<NodePortTuple> revNodeLinked = new LinkedList<NodePortTuple>();
+		        ArrayList<NodePortTuple> revNodeRoute = new ArrayList<NodePortTuple>();
 		        System.out.print("route:");
 		        
-		        for(int i = revRouteList.size() - 1; i >= 0; i--) 
+		        
+		        for(int i = revRouteList.size() - 1, j = 0; i > 0; i--, j++) 
 		        {
 		        	System.out.print(" " + revRouteList.get(i));
 		        	
-		        	/*for(Map.Entry<NodePortTuple, Set<Link>> entry : nodePortLinks.entrySet()) 
-		        	{
-		        		if(entry.getKey().getNodeId() == revRouteList.get(i)) 
-		        		{
-		        			nodeRoute.add(entry.getKey());
-		        			revNodeLinked.offerFirst(entry.getKey());
-		        		}
-		        	}*/
-		        	
+		        	addNodeTuples(nodeRoute, revRouteList.get(i), revRouteList.get(i - 1));
+		        	addNodeTuples(revNodeRoute, revRouteList.get(j), revRouteList.get(j + 1));
 		        }
 		        
-		        System.out.println();
-		        //ArrayList<NodePortTuple> revNodeRoute = new ArrayList<NodePortTuple>(revNodeLinked);
+		        System.out.println(" " + revRouteList.get(0));
+		        
+		        //nodeRoute.addAll(revNodeRoute);
 		        //route = new Route(new RouteId(src_id, dst_id), nodeRoute);
-		        //revRoute = new Route(new RouteId(dst_id, src_id), revNodeRoute);
 	        }
 	        
 	        // Write the path into the flow tables of the switches on the path.
-	        if (route != null && revRoute != null) 
+	        if (route != null) 
 	        {
 	        	installRoute(route.getPath(), match);
-	        	installRoute(revRoute.getPath(), match);
 	        }
 	     			
 	     	return Command.STOP;
+		}
+	}
+	
+	private void addNodeTuples(ArrayList<NodePortTuple> route, Long src, Long dst) 
+	{
+		Set<Link> links = lds.getSwitchLinks().get(src);
+		
+		for(Link link: links) 
+		{
+			if(link.getSrc() == src && link.getDst() == dst) 
+			{
+				route.add(new NodePortTuple(src, link.getSrcPort()));
+				route.add(new NodePortTuple(dst, link.getDstPort()));
+				break;
+			}
 		}
 	}
 
